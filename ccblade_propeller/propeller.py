@@ -12,9 +12,11 @@ class Propeller(om.Group):
     def initialize(self):
         self.options.declare('D', default=1, desc='Propeller diameter')
         self.options.declare('n_b', default=3, desc='Number of blades')
-        self.options.declare('n_cp', default=6, desc='Number of control points')
+        self.options.declare(
+            'n_cp', default=6, desc='Number of control points')
         self.options.declare('n_r', default=30, desc='Number of radial points')
-        self.options.declare('af_fname', default="af_data/xf-n0012-il-500000.dat", desc='Airfoil data file')
+        self.options.declare(
+            'af_fname', default="af_data/xf-n0012-il-500000.dat", desc='Airfoil data file')
 
     def setup(self):
         num_cp = self.options['n_cp']
@@ -43,10 +45,12 @@ class Propeller(om.Group):
         Rhub = 0.2*Rtip  # Just guessing on the hub diameter.
         radii_cp0 = np.linspace(Rhub, Rtip, num_cp)
 
-        c = 0.1   # Constant chord in meters.
+        # c = 0.1   # Constant chord in meters.
+        c = 1.5*0.0254   # Constant chord in meters.
         chord_cp0 = c*np.ones(num_cp)
 
-        P = 0.4  # Pitch in meters (used in the twist distribution).
+        # P = 0.4  # Pitch in meters (used in the twist distribution).
+        P = 16.0*0.0254  # Pitch in meters (used in the twist distribution).
         theta_cp0 = np.arctan(P/(np.pi*D*radii_cp0/Rtip))
 
         comp = om.IndepVarComp()
@@ -106,7 +110,7 @@ class Propeller(om.Group):
                                             "radii",
                                             "chord",
                                             "theta",
-                                            "v",
+                                            ("v", "free_stream_velocity"),
                                             "omega",
                                             "pitch"],
                            promotes_outputs=["thrust",
@@ -119,4 +123,5 @@ class Propeller(om.Group):
                                        torque={'units': 'N*m'},
                                        omega={'units': 'rad/s'}),
                            promotes=['*'])
-    
+
+        self.linear_solver = om.DirectSolver()
