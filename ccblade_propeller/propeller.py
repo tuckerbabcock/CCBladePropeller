@@ -10,7 +10,9 @@ from .ccblade_propeller import BEMTRotorComp
 
 class Propeller(om.Group):
     def initialize(self):
-        self.options.declare('D', default=1, desc='Propeller diameter')
+        self.options.declare('hub_pos_nondim', default=0.1,
+                             desc="Nondimensionalized position indicating the position of the propeller blade's hub")
+        # self.options.declare('D', default=1, desc='Propeller diameter')
         self.options.declare('n_b', default=3, desc='Number of blades')
         self.options.declare(
             'n_cp', default=6, desc='Number of control points')
@@ -40,31 +42,45 @@ class Propeller(om.Group):
         pitch = 0.0
 
         # D = 24.0*0.0254  # Diameter in meters.
-        D = self.options['D']
-        Rtip = 0.5*D
-        Rhub = 0.2*Rtip  # Just guessing on the hub diameter.
-        radii_cp0 = np.linspace(Rhub, Rtip, num_cp)
+        # D = self.options['D']
+        # Rtip = 0.5*D
+        # Rhub = 0.2*Rtip  # Just guessing on the hub diameter.
 
         # c = 0.1   # Constant chord in meters.
-        c = 1.5*0.0254   # Constant chord in meters.
-        chord_cp0 = c*np.ones(num_cp)
+        # c = 1.5*0.0254   # Constant chord in meters.
+        # chord_cp0 = c*np.ones(num_cp)
 
         # P = 0.4  # Pitch in meters (used in the twist distribution).
-        P = 16.0*0.0254  # Pitch in meters (used in the twist distribution).
-        theta_cp0 = np.arctan(P/(np.pi*D*radii_cp0/Rtip))
+        # P = 16.0*0.0254  # Pitch in meters (used in the twist distribution).
+        # D = 24.0*0.0254  # Diameter in meters.
+        # theta_cp0 = np.arctan(P/(np.pi*D*radii_cp0/Rtip))
 
-        comp = om.IndepVarComp()
-        comp.add_output("Rhub", val=Rhub, units="m")
-        comp.add_output("Rtip", val=Rtip, units="m")
-        comp.add_output("radii_cp", val=radii_cp0, units="m")
-        comp.add_output("chord_cp", val=chord_cp0, units="m")
-        comp.add_output("theta_cp", val=theta_cp0, units="rad")
+        # comp = om.IndepVarComp()
+        # comp.add_output("Rhub", val=Rhub, units="m")
+        # comp.add_output("Rtip", val=Rtip, units="m")
+        # comp.add_output("radii_cp", val=radii_cp0, units="m")
+        # comp.add_output("chord_cp", val=chord_cp0, units="m")
+        # comp.add_output("theta_cp", val=theta_cp0, units="rad")
         # comp.add_output("v", val=v, shape=num_operating_points, units="m/s")
         # comp.add_output("omega", val=omega,
         #                 shape=num_operating_points, units="rad/s")
-        comp.add_output("pitch", val=pitch,
-                        shape=num_operating_points, units="rad")
-        self.add_subsystem("prop_inputs", comp, promotes_outputs=["*"])
+        # comp.add_output("pitch", val=pitch,
+        #                 shape=num_operating_points, units="rad")
+        # self.add_subsystem("prop_inputs", comp, promotes_outputs=["*"])
+
+        hub_pos_nondim = self.options['hub_pos_nondim']
+        radii_non_dim = np.linspace(hub_pos_nondim, 1, num_cp)
+        self.add_subsystem("radii_cp",
+                           om.ExecComp(["radii_cp = Rtip * radii_non_dim",
+                                       f"Rhub = {hub_pos_nondim} * Rtip"],
+                                       radii_non_dim={
+                                           'units': 'unitless', 'val': radii_non_dim},
+                                       Rtip={'units': 'm'},
+                                       radii_cp={'units': 'm',
+                                                 'shape': radii_non_dim.shape},
+                                       Rhub={'units': 'm'}),
+                           promotes=['*'])
+        # radii_cp0 = np.linspace(Rhub, Rtip, num_cp)
 
         self.add_subsystem('propeller_rpm',
                            om.ExecComp('omega = 2*pi/60.0*rpm',
@@ -94,7 +110,7 @@ class Propeller(om.Group):
         n_b = self.options['n_b']
         af_fname = self.options['af_fname']
         comp = JuliaExplicitComp(jlcomp=BEMTRotorComp(af_fname=af_fname,
-                                                      cr75=c/Rtip,
+                                                      cr75=0.125,
                                                       Re_exp=0.6,
                                                       num_operating_points=num_operating_points,
                                                       num_blades=n_b,

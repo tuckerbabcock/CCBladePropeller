@@ -7,7 +7,10 @@ from ccblade_propeller import Propeller
 
 prob = om.Problem()
 
-prob.model.add_subsystem("propeller", Propeller(D=24.0*0.0254))
+n_cp = 5
+hub_pos_nondim = 0.2
+prob.model.add_subsystem("propeller", Propeller(
+    n_cp=n_cp, hub_pos_nondim=hub_pos_nondim))
 
 # Lower and upper limits on the chord design variable, in meters.
 chord_lower = 0.5*0.0254
@@ -27,6 +30,8 @@ rpm_upper = 8000
 prob.model.add_design_var(
     "propeller.rpm", lower=rpm_lower, upper=rpm_upper, ref=1e3)
 
+prob.model.add_design_var('propeller.Rtip')
+
 # Target thrust value in Newtons.
 thrust_target = 97.246
 prob.model.add_constraint(
@@ -38,9 +43,28 @@ prob.driver = om.pyOptSparseDriver(optimizer="SNOPT")
 
 prob.setup()
 
-prop_x0 = {
-    "propeller.rpm": 7200,
+radii_non_dim = np.linspace(hub_pos_nondim, 1, n_cp)
+Rtip = 24.0*0.0254/2
+radii_cp = Rtip * radii_non_dim
+c = 1.5*0.0254   # Constant chord in meters.
+chord_cp0 = c*np.ones(n_cp)
+P = 16.0*0.0254  # Pitch in meters (used in the twist distribution).
+theta_cp0 = np.arctan(P/(2*np.pi*radii_cp))
 
+print(f"radii_cp: {radii_cp}")
+print(f"chord_cp: {chord_cp0}")
+print(f"theta_cp: {theta_cp0}")
+
+prop_x0 = {
+    # "propeller.rpm": 1300,
+    # 'propeller.chord_cp': np.array([0.07029938, 0.1673303, 0.16800968, 0.11712355, 0.03671938]),
+    # 'propeller.theta_cp': np.array([1.35169226, 1.0135585, 0.80370435, 0.64733427, 0.50537101]),
+    # 'propeller.Rtip': 0.3,
+
+    "propeller.rpm": 7200,
+    'propeller.chord_cp': chord_cp0,
+    'propeller.theta_cp': theta_cp0,
+    'propeller.Rtip': Rtip
 }
 
 for key, value in prop_x0.items():
@@ -53,14 +77,16 @@ speedofsound = np.sqrt(gam*287.058*T0)
 v = M_infty * speedofsound
 prop_p0 = {
     "propeller.free_stream_velocity": v  # axial velocity in m/sec.
-
 }
 
 for key, value in prop_p0.items():
     prob[key][:] = value
 
+prob.run_model()
+prob.model.list_inputs(units=True, prom_name=True)
+prob.model.list_outputs(residuals=True, units=True, prom_name=True)
+
 prob.run_driver()
-# prob.run_model()
 prob.model.list_inputs(units=True, prom_name=True)
 prob.model.list_outputs(residuals=True, units=True, prom_name=True)
 
