@@ -56,11 +56,6 @@ print(f"chord_cp: {chord_cp0}")
 print(f"theta_cp: {theta_cp0}")
 
 prop_x0 = {
-    # "propeller.rpm": 1300,
-    # 'propeller.chord_cp': np.array([0.07029938, 0.1673303, 0.16800968, 0.11712355, 0.03671938]),
-    # 'propeller.theta_cp': np.array([1.35169226, 1.0135585, 0.80370435, 0.64733427, 0.50537101]),
-    # 'propeller.Rtip': 0.3,
-
     "propeller.rpm": 7200,
     'propeller.chord_cp': chord_cp0,
     'propeller.theta_cp': theta_cp0,
